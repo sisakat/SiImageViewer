@@ -29,14 +29,17 @@ const char* FRAGMENT_SHADER =
 
 SiImageViewer::SiImageViewer(QWidget *parent) : QOpenGLWidget(parent)
 {
+    // to receive necessary events
     setFocusPolicy(Qt::StrongFocus);
     setFocusPolicy(Qt::WheelFocus);
 
+    // set the OpenGL profile
     QSurfaceFormat format;
     format.setVersion(3,3);
     format.setProfile(QSurfaceFormat::CoreProfile);
     setFormat(format);
 
+    // default zoom step
     m_zoomStep = DEFAULT_ZOOM_STEP;
 }
 
@@ -57,14 +60,21 @@ SiImageViewer::~SiImageViewer()
 
 void SiImageViewer::setImage(const QImage &image)
 {
-    m_image = image.convertToFormat(QImage::Format_RGBA8888);
-
-    unsigned char* imageData = m_image.bits();
-    int width = m_image.width();
-    int height = m_image.height();
+    auto tmpImage = image.convertToFormat(QImage::Format_RGBA8888);
+    m_imageWidth = tmpImage.width();
+    m_imageHeight = tmpImage.height();
 
     glBindTexture(GL_TEXTURE_2D, m_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA8,
+        m_imageWidth,
+        m_imageHeight,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        tmpImage.bits());
     setupMatrices();
     update();
 }
@@ -81,16 +91,16 @@ void SiImageViewer::reset()
 
 void SiImageViewer::rotate(float angleDeg)
 {
-    m_model.translate(m_image.width()/2.0f, m_image.height()/2.0f);
-    m_model.rotate(-angleDeg, 0.0f, 0.0f, 1.0f);
-    m_model.translate(-m_image.width()/2.0f, -m_image.height()/2.0f);
+    translate(m_imageWidth/2.0f, m_imageHeight/2.0f);
+    m_model.rotate(angleDeg, 0.0f, 0.0f, 1.0f);
+    translate(-m_imageWidth/2.0f, -m_imageHeight/2.0f);
 }
 
 void SiImageViewer::rotateAround(float angleDeg, const QPoint &point)
 {
-    m_model.translate(point.x(), point.y());
-    m_model.rotate(-angleDeg, 0.0f, 0.0f, 1.0f);
-    m_model.translate(-point.x(), -point.y());
+    translate(point.x(), point.y());
+    m_model.rotate(angleDeg, 0.0f, 0.0f, 1.0f);
+    translate(-point.x(), -point.y());
 }
 
 void SiImageViewer::translate(float x, float y)
@@ -101,7 +111,6 @@ void SiImageViewer::translate(float x, float y)
 void SiImageViewer::initializeGL()
 {
     initializeOpenGLFunctions();
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     setupShaders();
@@ -112,9 +121,14 @@ void SiImageViewer::initializeGL()
 
 void SiImageViewer::paintGL()
 {
-    m_cursorPos = screenToImage(currentCursorPos());
+    m_cursorPosImage = screenToImage(currentCursorPos());
     updateMatrices();
-    glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(), m_backgroundColor.blueF(), 1.0f);
+
+    glClearColor(
+        m_backgroundColor.redF(),
+        m_backgroundColor.greenF(),
+        m_backgroundColor.blueF(),
+        1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(m_shaderProgram);
     glActiveTexture(GL_TEXTURE0);
@@ -152,47 +166,61 @@ void SiImageViewer::mouseMoveEvent(QMouseEvent *event)
 {
     auto currentPos = QVector2D{event->pos().x() * 1.0f, event->pos().y() * 1.0f};
     if (m_panning) {
+        // panning (user drags the image)
         auto oldP = screenToImage(m_originalMousePos);
         auto newP = screenToImage(currentPos);
-        auto tran = newP - oldP;
+        auto tran = newP - oldP; // delta from old pos to new pos
+
+        // translate
         m_model.translate(tran.x(), tran.y());
+
+        // update mouse position
         m_originalMousePos.setX(event->pos().x());
         m_originalMousePos.setY(event->pos().y());
     } else if (m_shiftDown && m_rDown) {
+        // rotation with precision and around pick point
         auto oldP = m_originalMousePos;
         auto newP = currentPos;
         auto tran = newP - oldP;
+
+        // rotate around imagePos
         auto imagePos = screenToImage(m_mouseDownPos);
-        rotateAround(-tran.y(), QPoint(imagePos.x(), imagePos.y()));
+        rotateAround(tran.y(), QPoint(imagePos.x(), imagePos.y()));
+
+        // update mouse position
         m_originalMousePos.setX(event->pos().x());
         m_originalMousePos.setY(event->pos().y());
     } else if (!m_shiftDown && m_rDown) {
+        // coarse rotation in 90 degree steps
         auto oldP = m_originalMousePos;
         auto newP = currentPos;
         auto tran = newP - oldP;
+
+        // only rotate if user moves mouse for a little distance
         if (std::abs(tran.y()) > this->devicePixelRatioF() * 30) {
             if (tran.y() > 0) {
-                rotate(-90);
+                rotate(90); // counter-clockwise
             } else {
-                rotate(90);
+                rotate(-90); // clockwise
             }
+
+            // update mouse position
             m_originalMousePos.setX(event->pos().x());
             m_originalMousePos.setY(event->pos().y());
         }
     }
+
     update();
 }
 
 void SiImageViewer::wheelEvent(QWheelEvent *event)
 {
-    m_zoomPos = screenToImage(currentCursorPos());
     if (event->angleDelta().y() > 0) {
         m_scale *= m_zoomStep;
     } else if (event->angleDelta().y() < 0) {
         m_scale *= 1.0f / m_zoomStep;
     }
     update();
-    m_setCursorFromZoom = true;
 }
 
 void SiImageViewer::keyPressEvent(QKeyEvent *event)
@@ -209,6 +237,7 @@ void SiImageViewer::keyPressEvent(QKeyEvent *event)
     if (m_ctrlDown && m_rDown) {
         reset();
     }
+
     update();
 }
 
@@ -271,11 +300,11 @@ void SiImageViewer::setupBuffers()
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
     GLfloat vertexData[] = {
-        //  x     y     z     u     v
+        // x    y     z     u     v
         1.0f, 1.0f, 0.0f, 1.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-        1.0f,0.0f, 0.0f, 1.0f, 1.0f,
-        0.0f,0.0f, 0.0f, 0.0f, 1.0f,
+        1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+        0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
     };
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*4*5, vertexData, GL_STATIC_DRAW);
@@ -291,8 +320,8 @@ void SiImageViewer::setupBuffers()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ibo);
 
     GLuint indexData[] = {
-        0,1,2, // first triangle
-        2,1,3, // second triangle
+        0, 1, 2, // first triangle
+        2, 1, 3, // second triangle
     };
 
     // fill with data
@@ -329,30 +358,36 @@ void SiImageViewer::setupMatrices()
 
 void SiImageViewer::updateMatrices()
 {
+    // Note: Because of the implementation of "translate", "scale" and "rotate"
+    // in QMatrix4x4 the transformation are applied bottom up. As they are multiplied
+    // from the left.
+
     m_pre.setToIdentity();
-    // m_model.setToIdentity();
     m_view.setToIdentity();
-    QMatrix4x4 model = m_model;
 
-    if (!m_image.isNull()) {
-        float imageAspect = 1.0f * m_image.height() / m_image.width();
-        float windowAspectX = 1.0f * this->height() / this->width();
+    float imageAspect = 1.0f * m_imageHeight / m_imageWidth;
+    float windowAspectX = 1.0f * this->height() / this->width();
+    float width = (1.0f *  2.0f / m_imageWidth) * windowAspectX * 1.0f/imageAspect;
+    float height = (1.0f * 2.0f / m_imageHeight);
 
-        float width = (1.0f *  2.0f / m_image.width()) * windowAspectX * 1.0f/imageAspect;
-        float height = (1.0f * 2.0f / m_image.height());
+    // vertices are at (0,0) to (1,1)
+    // scale them so they match the image size
+    m_pre.scale(m_imageWidth, m_imageHeight);
 
-        m_pre.scale(m_image.width(), m_image.height());
+    // viewport transformation
+    // map image size to -1.0 to 1.0
+    m_view.scale(width, height);
 
-        m_view.scale(width, height);
-        m_view.translate(-m_image.width()/2.0f, -m_image.height()/2.0f, 0.0f);
+    // translate center from first quadrant to origin
+    m_view.translate(-m_imageWidth/2.0f, -m_imageHeight/2.0f, 0.0f);
 
-        m_model.translate(m_cursorPos.x(), m_cursorPos.y());
-        m_model.scale(m_scale);
-        m_model.translate(-m_cursorPos.x(), -m_cursorPos.y());
-        m_scale = 1.0;
-    }
+    // apply scale (transform to origin, scale, transform back)
+    m_model.translate(m_cursorPosImage.x(), m_cursorPosImage.y());
+    m_model.scale(m_scale);
+    m_model.translate(-m_cursorPosImage.x(), -m_cursorPosImage.y());
+    m_scale = 1.0;
 
-    // m_model = model;
+    // resulting MVP matrix
     m_mvp = m_projection * m_view * m_model * m_pre;
 }
 
@@ -377,7 +412,7 @@ QVector2D SiImageViewer::screenToImage(const QVector2D &screen)
 
 QVector2D SiImageViewer::imageToScreen(const QVector2D &image)
 {
-    QVector4D vec(image.x() / m_image.width(), image.y() / m_image.height(), 1.0f, 1.0f);
+    QVector4D vec(image.x() / m_imageWidth, image.y() / m_imageHeight, 1.0f, 1.0f);
     vec = m_mvp * vec;
     float x = (vec.x() + 1.0f) / 2.0 * this->width();
     float y = this->height() - 1 - (vec.y() + 1.0f) / 2.0 * this->height();
