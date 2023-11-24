@@ -3,7 +3,8 @@
 #include <QMouseEvent>
 #include <QtMath>
 
-const float ZOOM_STEP = 1.3f;
+const float DEFAULT_ZOOM_STEP = 1.50f;
+const float FINE_ZOOM_STEP    = 1.05f;
 
 const char* VERTEX_SHADER =
     "#version 330                            \n"
@@ -35,6 +36,8 @@ SiImageViewer::SiImageViewer(QWidget *parent) : QOpenGLWidget(parent)
     format.setVersion(3,3);
     format.setProfile(QSurfaceFormat::CoreProfile);
     setFormat(format);
+
+    m_zoomStep = DEFAULT_ZOOM_STEP;
 }
 
 SiImageViewer::~SiImageViewer()
@@ -62,13 +65,19 @@ void SiImageViewer::openImage(const QImage &image)
 
     glBindTexture(GL_TEXTURE_2D, m_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
+    setupMatrices();
     update();
+}
+
+void SiImageViewer::setBackground(const QColor &color)
+{
+    m_backgroundColor = color;
 }
 
 void SiImageViewer::initializeGL()
 {
     initializeOpenGLFunctions();
-    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     setupShaders();
@@ -81,6 +90,7 @@ void SiImageViewer::paintGL()
 {
     m_cursorPos = screenToImage(currentCursorPos());
     updateMatrices();
+    glClearColor(m_backgroundColor.redF(), m_backgroundColor.greenF(), m_backgroundColor.blueF(), 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(m_shaderProgram);
     glActiveTexture(GL_TEXTURE0);
@@ -133,9 +143,9 @@ void SiImageViewer::wheelEvent(QWheelEvent *event)
 {
     m_zoomPos = screenToImage(currentCursorPos());
     if (event->angleDelta().y() > 0) {
-        m_scale *= ZOOM_STEP;
+        m_scale *= m_zoomStep;
     } else if (event->angleDelta().y() < 0) {
-        m_scale *= 1.0f / ZOOM_STEP;
+        m_scale *= 1.0f / m_zoomStep;
     }
     update();
     m_setCursorFromZoom = true;
@@ -143,11 +153,17 @@ void SiImageViewer::wheelEvent(QWheelEvent *event)
 
 void SiImageViewer::keyPressEvent(QKeyEvent *event)
 {
+    if (event->key() == Qt::Key_Shift) {
+        m_zoomStep = FINE_ZOOM_STEP;
+    }
     update();
 }
 
 void SiImageViewer::keyReleaseEvent(QKeyEvent *event)
 {
+    if (event->key() == Qt::Key_Shift) {
+        m_zoomStep = DEFAULT_ZOOM_STEP;
+    }
     update();
 }
 
@@ -254,6 +270,10 @@ void SiImageViewer::setupTexture()
 
 void SiImageViewer::setupMatrices()
 {
+    m_pre.setToIdentity();
+    m_model.setToIdentity();
+    m_view.setToIdentity();
+    m_projection.setToIdentity();
     m_mvpLocation = glGetUniformLocation(m_shaderProgram, "mvp");
 }
 

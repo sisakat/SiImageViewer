@@ -16,6 +16,7 @@ public:
     ~SiImageViewer();
 
     void openImage(const QImage& image);
+    void setBackground(const QColor& color);
 
 protected:
     void initializeGL() override;
@@ -40,6 +41,7 @@ private:
     GLuint m_mvpLocation;
 
     QImage m_image;
+    QColor m_backgroundColor;
 
     QMatrix4x4 m_pre;
     QMatrix4x4 m_model;
@@ -53,6 +55,7 @@ private:
     bool m_setCursorFromZoom;
     bool m_panning;
     float m_scale{1.0};
+    float m_zoomStep;
 
     bool m_update;
 
@@ -60,7 +63,6 @@ private:
     void setupBuffers();
     void setupTexture();
     void setupMatrices();
-
     void updateMatrices();
 
     QVector2D currentCursorPos() const;
