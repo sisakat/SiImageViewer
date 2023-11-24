@@ -172,15 +172,14 @@ void SiImageViewer::mouseMoveEvent(QMouseEvent *event)
         auto tran = newP - oldP;
         if (std::abs(tran.y()) > this->devicePixelRatioF() * 30) {
             if (tran.y() > 0) {
-                rotate(90);
-            } else {
                 rotate(-90);
+            } else {
+                rotate(90);
             }
             m_originalMousePos.setX(event->pos().x());
             m_originalMousePos.setY(event->pos().y());
         }
     }
-
     update();
 }
 
@@ -347,20 +346,14 @@ void SiImageViewer::updateMatrices()
         m_view.scale(width, height);
         m_view.translate(-m_image.width()/2.0f, -m_image.height()/2.0f, 0.0f);
 
-        model.translate(m_cursorPos.x(), m_cursorPos.y());
-        model.scale(m_scale);
-        model.translate(-m_cursorPos.x(), -m_cursorPos.y());
+        m_model.translate(m_cursorPos.x(), m_cursorPos.y());
+        m_model.scale(m_scale);
+        m_model.translate(-m_cursorPos.x(), -m_cursorPos.y());
         m_scale = 1.0;
     }
 
-    m_model = model;
+    // m_model = model;
     m_mvp = m_projection * m_view * m_model * m_pre;
-
-//    if  (m_setCursorFromZoom) {
-//        auto curPos = imageToScreen(m_zoomPos);
-//        QCursor::setPos(mapToGlobal(QPoint(curPos.x(), curPos.y())));
-//        m_setCursorFromZoom = false;
-//    }
 }
 
 QVector2D SiImageViewer::currentCursorPos() const
