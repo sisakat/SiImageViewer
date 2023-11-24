@@ -55,7 +55,7 @@ SiImageViewer::~SiImageViewer()
     glDeleteProgram(m_shaderProgram);
 }
 
-void SiImageViewer::openImage(const QImage &image)
+void SiImageViewer::setImage(const QImage &image)
 {
     m_image = image.convertToFormat(QImage::Format_RGBA8888);
 
@@ -72,6 +72,30 @@ void SiImageViewer::openImage(const QImage &image)
 void SiImageViewer::setBackground(const QColor &color)
 {
     m_backgroundColor = color;
+}
+
+void SiImageViewer::reset()
+{
+    setupMatrices();
+}
+
+void SiImageViewer::rotate(float angleDeg)
+{
+    m_model.translate(m_image.width()/2.0f, m_image.height()/2.0f);
+    m_model.rotate(-angleDeg, 0.0f, 0.0f, 1.0f);
+    m_model.translate(-m_image.width()/2.0f, -m_image.height()/2.0f);
+}
+
+void SiImageViewer::rotateAround(float angleDeg, const QPoint &point)
+{
+    m_model.translate(point.x(), point.y());
+    m_model.rotate(-angleDeg, 0.0f, 0.0f, 1.0f);
+    m_model.translate(-point.x(), -point.y());
+}
+
+void SiImageViewer::translate(float x, float y)
+{
+    m_model.translate(x, y);
 }
 
 void SiImageViewer::initializeGL()
@@ -108,10 +132,9 @@ void SiImageViewer::resizeGL(int width, int height)
 
 void SiImageViewer::mousePressEvent(QMouseEvent *event)
 {
-    auto pos = event->pos();
-    auto imagePos = screenToImage({pos.x() * 1.0f, pos.y() * 1.0f});
+    m_originalMousePos = currentCursorPos();
+    m_mouseDownPos = currentCursorPos();
     if (event->button() == Qt::MiddleButton) {
-        m_originalMousePos = currentCursorPos();
         m_panning = true;
     }
     update();
@@ -127,13 +150,35 @@ void SiImageViewer::mouseReleaseEvent(QMouseEvent *event)
 
 void SiImageViewer::mouseMoveEvent(QMouseEvent *event)
 {
+    auto currentPos = QVector2D{event->pos().x() * 1.0f, event->pos().y() * 1.0f};
     if (m_panning) {
         auto oldP = screenToImage(m_originalMousePos);
-        auto newP = screenToImage({event->pos().x() * 1.0f, event->pos().y() * 1.0f});
+        auto newP = screenToImage(currentPos);
         auto tran = newP - oldP;
         m_model.translate(tran.x(), tran.y());
         m_originalMousePos.setX(event->pos().x());
         m_originalMousePos.setY(event->pos().y());
+    } else if (m_shiftDown && m_rDown) {
+        auto oldP = m_originalMousePos;
+        auto newP = currentPos;
+        auto tran = newP - oldP;
+        auto imagePos = screenToImage(m_mouseDownPos);
+        rotateAround(-tran.y(), QPoint(imagePos.x(), imagePos.y()));
+        m_originalMousePos.setX(event->pos().x());
+        m_originalMousePos.setY(event->pos().y());
+    } else if (!m_shiftDown && m_rDown) {
+        auto oldP = m_originalMousePos;
+        auto newP = currentPos;
+        auto tran = newP - oldP;
+        if (std::abs(tran.y()) > this->devicePixelRatioF() * 30) {
+            if (tran.y() > 0) {
+                rotate(90);
+            } else {
+                rotate(-90);
+            }
+            m_originalMousePos.setX(event->pos().x());
+            m_originalMousePos.setY(event->pos().y());
+        }
     }
 
     update();
@@ -154,7 +199,16 @@ void SiImageViewer::wheelEvent(QWheelEvent *event)
 void SiImageViewer::keyPressEvent(QKeyEvent *event)
 {
     if (event->key() == Qt::Key_Shift) {
+        m_shiftDown = true;
         m_zoomStep = FINE_ZOOM_STEP;
+    } else if (event->key() == Qt::Key_Control) {
+        m_ctrlDown = true;
+    } else if (event->key() == Qt::Key_R) {
+        m_rDown = true;
+    }
+
+    if (m_ctrlDown && m_rDown) {
+        reset();
     }
     update();
 }
@@ -162,7 +216,12 @@ void SiImageViewer::keyPressEvent(QKeyEvent *event)
 void SiImageViewer::keyReleaseEvent(QKeyEvent *event)
 {
     if (event->key() == Qt::Key_Shift) {
+        m_shiftDown = false;
         m_zoomStep = DEFAULT_ZOOM_STEP;
+    } else if (event->key() == Qt::Key_Control) {
+        m_ctrlDown = false;
+    } else if (event->key() == Qt::Key_R) {
+        m_rDown = false;
     }
     update();
 }
@@ -212,20 +271,12 @@ void SiImageViewer::setupBuffers()
     glGenBuffers(1, &m_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
 
-//    GLfloat vertexData[] = {
-//        //  x     y     z     u     v
-//        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-//        -1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-//        1.0f,-1.0f, 0.0f, 1.0f, 0.0f,
-//        -1.0f,-1.0f, 0.0f, 0.0f, 0.0f,
-//    };
-
     GLfloat vertexData[] = {
         //  x     y     z     u     v
-        1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
-        1.0f,0.0f, 0.0f, 0.0f, 1.0f,
-        0.0f,0.0f, 0.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+        1.0f,0.0f, 0.0f, 1.0f, 1.0f,
+        0.0f,0.0f, 0.0f, 0.0f, 1.0f,
     };
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*4*5, vertexData, GL_STATIC_DRAW);
@@ -305,11 +356,11 @@ void SiImageViewer::updateMatrices()
     m_model = model;
     m_mvp = m_projection * m_view * m_model * m_pre;
 
-    if  (m_setCursorFromZoom) {
-        auto curPos = imageToScreen(m_zoomPos);
-        QCursor::setPos(mapToGlobal(QPoint(curPos.x(), curPos.y())));
-        m_setCursorFromZoom = false;
-    }
+//    if  (m_setCursorFromZoom) {
+//        auto curPos = imageToScreen(m_zoomPos);
+//        QCursor::setPos(mapToGlobal(QPoint(curPos.x(), curPos.y())));
+//        m_setCursorFromZoom = false;
+//    }
 }
 
 QVector2D SiImageViewer::currentCursorPos() const

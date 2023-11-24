@@ -15,8 +15,12 @@ public:
     explicit SiImageViewer(QWidget *parent = nullptr);
     ~SiImageViewer();
 
-    void openImage(const QImage& image);
+    void setImage(const QImage& image);
     void setBackground(const QColor& color);
+    void reset();
+    void rotate(float angleDeg);
+    void rotateAround(float angleDeg, const QPoint& point);
+    void translate(float x, float y);
 
 protected:
     void initializeGL() override;
@@ -52,12 +56,17 @@ private:
     QVector2D m_zoomPos;
     QVector2D m_imagePosition;
     QVector2D m_originalMousePos;
+    QVector2D m_mouseDownPos;
     bool m_setCursorFromZoom;
     bool m_panning;
     float m_scale{1.0};
     float m_zoomStep;
 
     bool m_update;
+
+    bool m_shiftDown;
+    bool m_ctrlDown;
+    bool m_rDown;
 
     void setupShaders();
     void setupBuffers();

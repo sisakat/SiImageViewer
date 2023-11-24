@@ -25,7 +25,7 @@ void MainWindow::on_btOpenImage_clicked()
     if (fd.exec()) {
         auto selectedFiles = fd.selectedFiles();
         if (selectedFiles.size() > 0) {
-            ui->siImageViewer->openImage(QImage(selectedFiles.first()));
+            ui->siImageViewer->setImage(QImage(selectedFiles.first()));
         }
     }
 }
