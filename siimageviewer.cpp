@@ -3,6 +3,8 @@
 #include <QMouseEvent>
 #include <QtMath>
 
+const float ZOOM_STEP = 1.3f;
+
 const char* VERTEX_SHADER =
     "#version 330                            \n"
     "layout(location = 0) in vec4 vtx_pos  ; \n"
@@ -77,6 +79,7 @@ void SiImageViewer::initializeGL()
 
 void SiImageViewer::paintGL()
 {
+    m_cursorPos = screenToImage(currentCursorPos());
     updateMatrices();
     glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(m_shaderProgram);
@@ -97,23 +100,45 @@ void SiImageViewer::mousePressEvent(QMouseEvent *event)
 {
     auto pos = event->pos();
     auto imagePos = screenToImage({pos.x() * 1.0f, pos.y() * 1.0f});
-    qDebug() << imagePos;
+    if (event->button() == Qt::MiddleButton) {
+        m_originalMousePos = currentCursorPos();
+        m_panning = true;
+    }
     update();
 }
 
 void SiImageViewer::mouseReleaseEvent(QMouseEvent *event)
 {
+    if (event->button() == Qt::MiddleButton) {
+        m_panning = false;
+    }
     update();
 }
 
 void SiImageViewer::mouseMoveEvent(QMouseEvent *event)
 {
+    if (m_panning) {
+        auto oldP = screenToImage(m_originalMousePos);
+        auto newP = screenToImage({event->pos().x() * 1.0f, event->pos().y() * 1.0f});
+        auto tran = newP - oldP;
+        m_model.translate(tran.x(), tran.y());
+        m_originalMousePos.setX(event->pos().x());
+        m_originalMousePos.setY(event->pos().y());
+    }
+
     update();
 }
 
 void SiImageViewer::wheelEvent(QWheelEvent *event)
 {
+    m_zoomPos = screenToImage(currentCursorPos());
+    if (event->angleDelta().y() > 0) {
+        m_scale *= ZOOM_STEP;
+    } else if (event->angleDelta().y() < 0) {
+        m_scale *= 1.0f / ZOOM_STEP;
+    }
     update();
+    m_setCursorFromZoom = true;
 }
 
 void SiImageViewer::keyPressEvent(QKeyEvent *event)
@@ -235,8 +260,9 @@ void SiImageViewer::setupMatrices()
 void SiImageViewer::updateMatrices()
 {
     m_pre.setToIdentity();
-    m_model.setToIdentity();
+    // m_model.setToIdentity();
     m_view.setToIdentity();
+    QMatrix4x4 model = m_model;
 
     if (!m_image.isNull()) {
         float imageAspect = 1.0f * m_image.height() / m_image.width();
@@ -246,11 +272,30 @@ void SiImageViewer::updateMatrices()
         float height = (1.0f * 2.0f / m_image.height());
 
         m_pre.scale(m_image.width(), m_image.height());
-        m_model.translate(-m_image.width()/2.0f, -m_image.height()/2.0f, 0.0f);
+
         m_view.scale(width, height);
+        m_view.translate(-m_image.width()/2.0f, -m_image.height()/2.0f, 0.0f);
+
+        model.translate(m_cursorPos.x(), m_cursorPos.y());
+        model.scale(m_scale);
+        model.translate(-m_cursorPos.x(), -m_cursorPos.y());
+        m_scale = 1.0;
     }
 
+    m_model = model;
     m_mvp = m_projection * m_view * m_model * m_pre;
+
+    if  (m_setCursorFromZoom) {
+        auto curPos = imageToScreen(m_zoomPos);
+        QCursor::setPos(mapToGlobal(QPoint(curPos.x(), curPos.y())));
+        m_setCursorFromZoom = false;
+    }
+}
+
+QVector2D SiImageViewer::currentCursorPos() const
+{
+    auto pos = mapFromGlobal(QCursor::pos());
+    return {pos.x() * 1.0f, pos.y() * 1.0f};
 }
 
 QVector2D SiImageViewer::screenToImage(const QVector2D &screen)
@@ -264,4 +309,13 @@ QVector2D SiImageViewer::screenToImage(const QVector2D &screen)
     vec = m_model.inverted() * m_view.inverted() * m_projection.inverted() * vec;
 
     return {vec.x(), vec.y()};
+}
+
+QVector2D SiImageViewer::imageToScreen(const QVector2D &image)
+{
+    QVector4D vec(image.x() / m_image.width(), image.y() / m_image.height(), 1.0f, 1.0f);
+    vec = m_mvp * vec;
+    float x = (vec.x() + 1.0f) / 2.0 * this->width();
+    float y = this->height() - 1 - (vec.y() + 1.0f) / 2.0 * this->height();
+    return {x, y};
 }

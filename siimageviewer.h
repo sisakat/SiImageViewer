@@ -46,6 +46,13 @@ private:
     QMatrix4x4 m_view;
     QMatrix4x4 m_projection;
     QMatrix4x4 m_mvp;
+    QVector2D m_cursorPos;
+    QVector2D m_zoomPos;
+    QVector2D m_imagePosition;
+    QVector2D m_originalMousePos;
+    bool m_setCursorFromZoom;
+    bool m_panning;
+    float m_scale{1.0};
 
     bool m_update;
 
@@ -56,7 +63,9 @@ private:
 
     void updateMatrices();
 
+    QVector2D currentCursorPos() const;
     QVector2D screenToImage(const QVector2D& screen);
+    QVector2D imageToScreen(const QVector2D& image);
 };
 
 #endif // SIIMAGEVIEWER_H
