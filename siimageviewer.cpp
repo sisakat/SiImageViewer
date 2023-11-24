@@ -96,15 +96,8 @@ void SiImageViewer::resizeGL(int width, int height)
 void SiImageViewer::mousePressEvent(QMouseEvent *event)
 {
     auto pos = event->pos();
-    float x = 2.0f * pos.x() / this->width() - 1.0f;
-    float y = 2.0f * (this->height() - pos.y() - 1) / this->height() - 1.0f;
-
-    QVector4D vec(x, y, 1.0f, 1.0f);
-    vec = m_mvp.inverted() * vec;
-
-    int xImage = std::floor(m_image.width() - 1 - vec.x() * m_image.width());
-    int yImage = std::floor(m_image.height() - 1 - vec.y() * m_image.height());
-
+    auto imagePos = screenToImage({pos.x() * 1.0f, pos.y() * 1.0f});
+    qDebug() << imagePos;
     update();
 }
 
@@ -188,10 +181,10 @@ void SiImageViewer::setupBuffers()
 
     GLfloat vertexData[] = {
         //  x     y     z     u     v
-        1.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-        0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-        1.0f,0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f,0.0f, 0.0f, 0.0f, 0.0f,
+        1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+        1.0f,0.0f, 0.0f, 0.0f, 1.0f,
+        0.0f,0.0f, 0.0f, 1.0f, 1.0f,
     };
 
     glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*4*5, vertexData, GL_STATIC_DRAW);
@@ -241,7 +234,9 @@ void SiImageViewer::setupMatrices()
 
 void SiImageViewer::updateMatrices()
 {
+    m_pre.setToIdentity();
     m_model.setToIdentity();
+    m_view.setToIdentity();
 
     if (!m_image.isNull()) {
         float imageAspect = 1.0f * m_image.height() / m_image.width();
@@ -250,11 +245,23 @@ void SiImageViewer::updateMatrices()
         float width = (1.0f *  2.0f / m_image.width()) * windowAspectX * 1.0f/imageAspect;
         float height = (1.0f * 2.0f / m_image.height());
 
-        m_model.scale(1.0f * m_image.width(), 1.0f * m_image.height());
-        m_model.scale(width, height);
-        m_model.rotate(180.0f, 0.0f, 0.0f, 1.0f);
-        m_model.translate(-0.5f, -0.5f, 0.0f);
+        m_pre.scale(m_image.width(), m_image.height());
+        m_model.translate(-m_image.width()/2.0f, -m_image.height()/2.0f, 0.0f);
+        m_view.scale(width, height);
     }
 
-    m_mvp = m_projection * m_view * m_model;
+    m_mvp = m_projection * m_view * m_model * m_pre;
+}
+
+QVector2D SiImageViewer::screenToImage(const QVector2D &screen)
+{
+    // viewport transformation
+    float x = 2.0f * screen.x() / this->width() - 1.0f;
+    float y = 2.0f * (this->height() - screen.y() - 1) / this->height() - 1.0f;
+
+    // apply inverse transformation to get to image pixel coordinates
+    QVector4D vec(x, y, 1.0f, 1.0f);
+    vec = m_model.inverted() * m_view.inverted() * m_projection.inverted() * vec;
+
+    return {vec.x(), vec.y()};
 }

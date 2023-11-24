@@ -5,6 +5,8 @@
 #include <QOpenGLFunctions_3_3_Core>
 #include <QOpenGLWidget>
 #include <QMatrix4x4>
+#include <QVector2D>
+#include <QVector4D>
 
 class SiImageViewer : public QOpenGLWidget, protected QOpenGLFunctions_3_3_Core
 {
@@ -39,6 +41,7 @@ private:
 
     QImage m_image;
 
+    QMatrix4x4 m_pre;
     QMatrix4x4 m_model;
     QMatrix4x4 m_view;
     QMatrix4x4 m_projection;
@@ -52,6 +55,8 @@ private:
     void setupMatrices();
 
     void updateMatrices();
+
+    QVector2D screenToImage(const QVector2D& screen);
 };
 
 #endif // SIIMAGEVIEWER_H
