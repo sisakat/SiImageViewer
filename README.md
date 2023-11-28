@@ -23,3 +23,10 @@ All you need to show an image is a `QImage` instance, which can be created from 
 | `Shift + R + Left Mouse Button`   | Precise rot. around cursor     |
 | `R`                               | Reset all transformations      |
 
+## Building
+To get a quick look the repository contains a small main window where
+you can open an image and interact with the viewer.
+
+To build this project open it in QtCreator or manually build it given
+the CMakeLists.txt.
+
