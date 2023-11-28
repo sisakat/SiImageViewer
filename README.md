@@ -14,4 +14,7 @@ Implemented as an QOpenGLWidget.
 
 `Shift + R + Left Mouse Button` for precise rotation around the cursor.
 
-`Ctrl + R` to reset the view.
+`Ctrl + R` to rotate image 90 degrees around the image center.
+
+`R` to reset all transforms.
+

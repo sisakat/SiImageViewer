@@ -260,6 +260,10 @@ void SiImageViewer::keyPressEvent(QKeyEvent *event)
     }
 
     if (m_ctrlDown && m_rDown) {
+        rotate(-90);
+    }
+
+    if (!m_ctrlDown && !m_shiftDown && m_rDown) {
         reset();
     }
 
