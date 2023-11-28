@@ -86,6 +86,7 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
+    void focusInEvent(QFocusEvent *event) override;
 
 private:
     GLuint m_vertexShader;
@@ -121,6 +122,7 @@ private:
     bool m_ctrlDown;  // true when control is held down
     bool m_rDown;     // true when R is held down
 
+    void resetStates();
     void setupShaders();
     void setupBuffers();
     void setupTexture();

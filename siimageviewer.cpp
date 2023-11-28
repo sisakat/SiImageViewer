@@ -279,6 +279,19 @@ void SiImageViewer::keyReleaseEvent(QKeyEvent *event)
     update();
 }
 
+void SiImageViewer::focusInEvent(QFocusEvent *event)
+{
+    resetStates();
+}
+
+void SiImageViewer::resetStates()
+{
+    m_panning = false;
+    m_shiftDown = false;
+    m_ctrlDown = false;
+    m_rDown = false;
+}
+
 void SiImageViewer::setupShaders()
 {
     const char* source;
