@@ -9,7 +9,7 @@ Follow these instructions to embed the image viewer into your project:
 2. Create an empty widget and promote it to `SiImageViewer`.
 3. Call `setImage(const QImage& image)` to set the current image.
 
-All you need to show an image is an `QImage` instance, which can be created from memory or file.
+All you need to show an image is a `QImage` instance, which can be created from memory or file.
 
 ## Shortcuts
 `Scroll Wheel` for fast zooming.
