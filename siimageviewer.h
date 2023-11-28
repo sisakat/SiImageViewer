@@ -40,7 +40,8 @@ public:
     ~SiImageViewer();
 
     /**
-     * @brief Sets the main image.
+     * @brief Sets the main image. The data is directly copied onto graphics memory.
+     * The provided QImage can be destroyed after the call.
      * @param image Image to display.
      */
     void setImage(const QImage& image);
