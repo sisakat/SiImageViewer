@@ -12,17 +12,14 @@ Follow these instructions to embed the image viewer into your project:
 All you need to show an image is a `QImage` instance, which can be created from memory or file.
 
 ## Shortcuts
-`Scroll Wheel` for fast zooming.
 
-`Shift + Scroll Wheel` for precise zooming.
-
-`Scroll Wheel Press` for panning.
-
-`R + Left Mouse Button` for rotation in 90 degree steps around the image center.
-
-`Shift + R + Left Mouse Button` for precise rotation around the cursor.
-
-`Ctrl + R` to rotate image 90 degrees around the image center.
-
-`R` to reset all transforms.
+| Shortcut                          | Description                    |
+| --------------------------------- | ------------------------------ |
+| `Scroll Wheel`                    | Fast zooming                   |
+| `Shift + Scroll Wheel`            | Precise zooming                |
+| `Scroll Wheell Press`             | Panning                        |
+| `Ctrl + R`                        | Rotation in 90 degree steps    | 
+| `R + Left Mouse Button`           | Rotation in 90 degree steps    |
+| `Shift + R + Left Mouse Button`   | Precise rot. around cursor     |
+| `R`                               | Reset all transformations      |
 
