@@ -14,3 +14,4 @@ Implemented as an QOpenGLWidget.
 
 `Shift + R + Left Mouse Button` for precise rotation around the cursor.
 
+`Ctrl + R` to reset the view.
