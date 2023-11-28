@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <QMouseEvent>
 #include <QtMath>
+#include <stdexcept>
 
 const float DEFAULT_ZOOM_STEP = 1.50f;
 const float FINE_ZOOM_STEP    = 1.05f;
