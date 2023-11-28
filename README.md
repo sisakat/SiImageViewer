@@ -2,8 +2,16 @@
 Simple Qt Image Viewer Widget with support for panning, zoom and rotations.
 Implemented as an QOpenGLWidget.
 
-## Shortcuts
+## Usage
+Follow these instructions to embed the image viewer into your project:
 
+1. Add `siimageviewer.h` and `siimageviewer.cpp` to your project.
+2. Create an empty widget and promote it to `SiImageViewer`.
+3. Call `setImage(const QImage& image)` to set the current image.
+
+All you need to show an image is an `QImage` instance, which can be created from memory or file.
+
+## Shortcuts
 `Scroll Wheel` for fast zooming.
 
 `Shift + Scroll Wheel` for precise zooming.
