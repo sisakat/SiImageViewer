@@ -101,6 +101,8 @@ void SiImageViewer::setImage(const QImage &image)
         GL_UNSIGNED_BYTE,
         tmpImage.bits());
     setupMatrices();
+    updateMatrices();
+    centerImage();
     update();
 }
 
@@ -112,6 +114,8 @@ void SiImageViewer::setBackground(const QColor &color)
 void SiImageViewer::reset()
 {
     setupMatrices();
+    updateMatrices();
+    centerImage();
 }
 
 void SiImageViewer::rotate(float angleDeg)
@@ -431,6 +435,17 @@ void SiImageViewer::updateMatrices()
 
     // resulting MVP matrix
     m_mvp = m_projection * m_view * m_model * m_pre;
+}
+
+void SiImageViewer::centerImage() 
+{
+    auto left = screenToImage(QVector2D(0.0f, 0.0f));
+    auto right = screenToImage(QVector2D(this->width()-1, 0.0f));
+    auto width = right.x() - left.x();
+
+    m_model.translate(m_imageWidth / 2, m_imageHeight / 2);
+    m_model.scale(1.0f * width / m_imageWidth);
+    m_model.translate(-m_imageWidth / 2, -m_imageHeight / 2);
 }
 
 QVector2D SiImageViewer::currentCursorPos() const

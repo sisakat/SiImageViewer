@@ -129,6 +129,7 @@ private:
     void setupTexture();
     void setupMatrices();
     void updateMatrices();
+    void centerImage();
 
     /**
      * @brief Gets the current cursor position relative to the widget.
